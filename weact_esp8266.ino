@@ -27,6 +27,7 @@
 #include <WiFiClientSecure.h>
 
 #include "SaintCalendar.h"
+#include "secrets.h" // OTA_PASSWORD (fichier local, non versionne)
 // Ecran : brochage WeAct ESP8266 dans GxEPD2_display_selection_new_style.h (CS=D8, DC=D2, RST=D1, BUSY=D0)
 #include "GxEPD2_display_selection_new_style.h"
 
@@ -56,7 +57,6 @@ static constexpr char WEATHER_URL[] = "https://api.open-meteo.com/v1/forecast?la
 static constexpr unsigned long WEATHER_SHOW_MS = 10000UL;  // duree d'affichage de la meteo
 
 static constexpr char OTA_HOSTNAME[] = "e-paper-clock";
-static constexpr char OTA_PASSWORD[] = "123456";              // mets un mot de passe pour proteger la mise a jour
 
 static constexpr int SCREEN_W = 296;
 static constexpr int SCREEN_H = 128;
