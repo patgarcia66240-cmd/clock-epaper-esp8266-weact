@@ -71,7 +71,7 @@ static constexpr int TIME_BASELINE_Y = 78;
 
 static constexpr int SAINT_TOP = 121;
 static constexpr int SAINT_AREA_Y = 94;   // juste sous la zone de l'heure (24 + 70)
-static constexpr int SAINT_AREA_H = 32;   // garde la meme ligne basse (125)
+static constexpr int SAINT_AREA_H = SCREEN_H - SAINT_AREA_Y;  // jusqu'au bas de l'ecran (34 px)
 
 static constexpr int H_MARGIN = 6;
 
@@ -437,8 +437,7 @@ bool connectWiFiAndInitNTP()
     ArduinoOTA.setPassword(OTA_PASSWORD);
   ArduinoOTA.begin();
 
-  ntp.ruleDST("CEST", Last, Sun, Mar, 2, 120);
-  ntp.ruleSTD("CET", Last, Sun, Oct, 3, 60);
+  // Pas de ruleDST/ruleSTD : le fuseau et l'heure d'ete sont geres par localTimeFromUtc()
   ntp.begin();
 
   Serial.println("NTP initialise");
@@ -851,13 +850,20 @@ int lastSundayOf(int y, int m)
   return 25;
 }
 
-// Heure d'ete en Europe : du dernier dimanche de mars au dernier dimanche d'octobre
+// Decalage UTC -> France (1 = hiver, 2 = ete), regle unique utilisee partout.
+// Heure d'ete : du dernier dimanche de mars 01:00 UTC au dernier dimanche d'octobre 01:00 UTC.
+// h = heure UTC (0..23) ; pour un calcul au niveau du jour, h = 12 (midi).
+int dstOffsetHours(int y, int mo, int d, int h)
+{
+  if (mo > 3 && mo < 10) return 2;
+  if (mo < 3 || mo > 10) return 1;
+  if (mo == 3) return (d > lastSundayOf(y, 3) || (d == lastSundayOf(y, 3) && h >= 1)) ? 2 : 1;
+  return (d < lastSundayOf(y, 10) || (d == lastSundayOf(y, 10) && h < 1)) ? 2 : 1;
+}
+
 int utcOffsetFor(int y, int m, int d)
 {
-  if (m > 3 && m < 10) return 2;
-  if (m < 3 || m > 10) return 1;
-  if (m == 3) return (d >= lastSundayOf(y, 3)) ? 2 : 1;
-  return (d < lastSundayOf(y, 10)) ? 2 : 1;
+  return dstOffsetHours(y, m, d, 12);
 }
 
 // Heure UTC -> heure locale (France). ntp.epoch() renvoie l'heure UTC, le fuseau est applique ici.
@@ -872,11 +878,7 @@ time_t localTimeFromUtc(time_t utc)
   const int d = g->tm_mday;
   const int h = g->tm_hour;
 
-  int off = 1;
-  if (mo > 3 && mo < 10) off = 2;
-  else if (mo == 3) off = (d > lastSundayOf(y, 3) || (d == lastSundayOf(y, 3) && h >= 1)) ? 2 : 1;
-  else if (mo == 10) off = (d < lastSundayOf(y, 10) || (d == lastSundayOf(y, 10) && h < 1)) ? 2 : 1;
-
+  const int off = dstOffsetHours(y, mo, d, h);
   return utc + off * 3600;
 }
 void drawSkyPage()
